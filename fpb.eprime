@@ -1,0 +1,95 @@
+language ESSENCE' 1.0
+
+given n_producers : int
+given n_products : int
+given n_weeks : int
+given product_category : matrix indexed by [int(1..n_products)] of int(1..3)
+given product_type : matrix indexed by [int(1..n_products)] of int(1..n_products)
+given product_price : matrix indexed by [int(1..n_products)] of int(..)
+given product_producer : matrix indexed by [int(1..n_products)] of int(1..n_producers)
+given product_quantity : matrix indexed by [int(1..n_products)] of int(..)
+given basket_price : matrix indexed by [int(1..3)] of int(..)
+given max_type : int
+given same_type : bool
+
+letting max_price = max(basket_price)
+letting individual_max_price = max(product_price)
+letting max_type_product = max(product_type)
+letting min_price = min(product_price)
+
+letting CATEGORY be domain int(1..3)
+letting WEEKS be domain int(1..n_weeks)
+letting PRODUCTS be domain int(1..n_products)
+letting PRODUCERS be domain int(1..n_producers)
+letting TYPE be domain int(1..max_type_product)
+
+find b : matrix indexed by [int(1..3), int(1..n_weeks), int(1..n_products)] of int(0..max_type)
+find optimal : int(0..(max_price-min_price)*n_weeks*3)
+
+branching on[optimal]
+minimising optimal
+such that
+
+$separating out categories
+forAll i : CATEGORY.
+ forAll j : WEEKS.
+   forAll k : PRODUCTS.
+    (product_category[k] != i) -> b[i,j,k] = 0,
+
+forAll i : CATEGORY.
+ forAll j : WEEKS.
+   forAll k : PRODUCTS.
+    (product_category[k] = i) -> ((b[i,j,k] >= 0) /\ (b[i,j,k] <= max_type) /\ (b[i,j,k] <= product_quantity[k])),
+
+$atleast 3 products in a basket
+forAll i : CATEGORY.
+ forAll j : WEEKS.
+    3 <= sum k : PRODUCTS. (b[i,j,k] != 0),
+
+$max_type constraint
+forAll i : CATEGORY.
+ forAll j : WEEKS.
+  forAll k : TYPE.
+   max_type >=  sum l : PRODUCTS.(product_type[l] = k) * (b[i,j,l]),
+
+$a basket should not contain just the same type
+forAll i : CATEGORY.
+ forAll j : WEEKS.
+  forAll k : TYPE.
+   1 <= sum l : PRODUCTS. ((b[i,j,l] != 0) /\ (product_type[l] != k)),
+
+$same producer constraint
+(same_type) ->
+forAll i : CATEGORY.
+ forAll j : WEEKS.
+  forAll k : PRODUCTS.(b[i,j,k] != 0) -> (product_type[k] = product_producer[k]) ->
+   forAll l : PRODUCTS. (product_type[l] = product_type[k]) -> (product_producer[l] = product_producer[k]),
+  
+   
+$atleast one producer constraint
+forAll j : WEEKS.
+  forAll k : PRODUCERS.
+   1 <= sum i : CATEGORY. 
+         sum l : PRODUCTS.
+         ((b[i,j,l] != 0) /\ product_producer[l] = k),
+
+$product quantity constraint
+forAll i : PRODUCTS.
+ product_quantity[i] >= sum j : CATEGORY.
+                         sum k : WEEKS. (b[j,k,i]),
+
+$symmetry breaking
+forAll i : CATEGORY.
+ forAll j : int(1..n_weeks-1).
+  forAll k : int(j+1..n_weeks).
+   b[i,j,..] <=lex b[i,k,..],
+
+
+$price and final optimize
+optimal = sum i : CATEGORY.
+            sum k : WEEKS.
+               |basket_price[i]-sum l : PRODUCTS.
+                 (b[i,k,l]*product_price[l])|,
+
+
+true

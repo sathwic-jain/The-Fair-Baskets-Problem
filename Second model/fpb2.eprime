@@ -1,0 +1,207 @@
+language ESSENCE' 1.0
+
+given n_producers : int
+given n_products : int
+given n_weeks : int
+given product_category : matrix indexed by [int(1..n_products)] of int(1..3)
+given product_type : matrix indexed by [int(1..n_products)] of int(1..n_products)
+given product_price : matrix indexed by [int(1..n_products)] of int(..)
+given product_producer : matrix indexed by [int(1..n_products)] of int(1..n_producers)
+given product_quantity : matrix indexed by [int(1..n_products)] of int(..)
+letting max__category = max(product_category)
+given basket_price : matrix indexed by [int(1..max_category)] of int(..)
+given max_type : int
+given same_type : bool
+
+letting max_product_quantity = max(product_quantity)
+letting max_price = max(basket_price)
+letting max_producer = max(product_producer)
+letting individual_max_price = max(product_price)
+letting min_product_quantity = min(product_quantity)
+letting individual_min_price = min(product_price)
+letting max_type_product = max(product_type)
+
+find category_indexes : matrix indexed by [int(1..max_category), int(1..n_products)] of int(0..max_category)
+find each_product : matrix indexed by [int(1..n_products)] of int(min_product_quantity..max_product_quantity)
+find price_of_each : matrix indexed by [int(1..max_category), int(1..n_weeks)] of int(0..max_price*2)
+find type_matrix : matrix indexed by [int(1..max_category), int(1..n_products)] of int(0..n_products)
+
+$------------------------------to differentiate total quantity based on prices--------------
+
+find total_price : matrix indexed by [int(1..max_category)] of int(1..n_products*max_product_quantity*individual_max_price)
+
+find equal_or_less_price : matrix indexed by [int(1..max_category)] of int(0..max_category)
+
+
+$--------------------------------------------------same producer constraint----------------
+
+find type_matrix_3d : matrix indexed by [int(1..max_category), int(1..n_weeks), int(1..n_products)] of int(0..max_type_product)
+
+$-------------------------------------------------------------------------------------
+
+find producer_matrix_check : matrix indexed by [int(1..n_weeks), int(1..n_producers)] of int(1..n_products)
+
+find each_basket_product_count : matrix indexed by [int(1..max_category)] of int(3..n_products)
+find each_basket_product_count_2 : matrix indexed by [int(1..max_category), int(1..n_weeks)] of int(3..n_products)
+find not_all_same_type : matrix indexed by [int(1..max_category), int(1..n_weeks)] of int(1..n_products)
+find sum_of_same_quantity_products : matrix indexed by [int(1..max_category), int(1..n_weeks)] of int(0..max_type)
+
+find solution : matrix indexed by [int(1..max_category), int(1..n_weeks), int(1..n_products)] of int(0..max_type)
+
+$==============================optimisation===================================================================================
+$ 1st way -----------------------------------------------------------
+
+find minimal : matrix indexed by [int(1..max_category)] of int(0..(max_price*max_category)-(individual_max_price*max_category))
+find optimal : int(0..(max_price*n_weeks*max_category)-(individual_max_price*n_weeks*max_category))
+branching on [optimal]
+minimising optimal
+
+$---------------------------different way of optimisation---------------------------------------------------------- 
+$optimising each week
+
+$find minimal : matrix indexed by [int(1..max_category),int(1..n_weeks)] of int(0..(max_price*max_category)-(individual_max_price*max_category))
+$find minimal_sum : matrix indexed by [int(1..n_weeks)] of int(0..(max_price*max_category)-(individual_max_price*max_category))
+$find small : int(1..100)
+$find optimal : int(0..(max_price*n_weeks*max_category)-(individual_max_price*n_weeks*max_category))
+$branching on [optimal]
+$minimising optimal
+$========================================================
+
+such that
+
+    forAll i : int(1..max_category).
+     forAll j : int(1..n_products). (product_category[j] = i) -> category_indexes[i,j] = product_category[j],
+   
+    forAll i : int(1..max_category).
+     forAll j : int(1..n_products). (product_category[j] != i) -> category_indexes[i,j] = 0,   
+
+
+$------------------------------to differentiate total quantity based on prices--------------
+
+    forAll i : int(1..max_category).
+     total_price[i] = sum k : int(1..n_products).
+                                  (category_indexes[i,k]/i)*product_quantity[k]*product_price[k],
+
+   forAll i :int(1..max_category). (total_price[i] <= basket_price[i]*n_weeks) ->
+                                      equal_or_less_price[i] = i,
+
+       forAll i :int(1..max_category). (total_price[i] > basket_price[i]*n_weeks) ->
+                                      equal_or_less_price[i] = 0,
+
+
+
+$-----------------------------------------------------------------------------------------
+
+    forAll i : int(1..max_category).
+     forAll j : int(1..n_weeks).
+      forAll k : int(1..n_products). (category_indexes[i,k] = i) ->
+       ( solution[i,j,k] <= product_quantity[k] /\ solution[i,j,k] <= max_type /\ solution[i,j,k] >= 0), 
+
+    forAll i : int(1..max_category).
+     forAll j : int(1..n_weeks).
+      forAll k :int(1..n_products). (category_indexes[i,k] != i) ->
+       solution[i,j,k] = 0,
+
+$---------------------each basket should contain atleast 3------------------------------------
+
+    forAll i : int(1..max_category).
+     forAll j :int(1..n_weeks).
+      each_basket_product_count_2[i,j] = sum k : int(1..n_products).
+                                           (solution[i,j,k] != 0),
+$-------------max  type  in a basket constraint------------------------------------------------------------------
+    
+forAll i : int(1..max_category).
+     forAll j : int(1..n_weeks).
+      forAll k : int(1..n_products). type_matrix_3d[i,j,k] = ((solution[i,j,k] != 0)*product_type[k]), 
+
+
+    forAll i : int(1..max_category).
+     forAll l : int(1..n_weeks).
+      forAll j : int(1..n_products-1).
+       forAll k : int(j+1..n_products). (type_matrix_3d[i,l,j] = type_matrix_3d[i,l,k]) -> (solution[i,l,j] + solution[i,l,k] <= max_type),
+
+$--------------------------------------------------------------------------------------------------------------------------------
+$-----------------------a basket should not contain the same type only--------------
+    forAll i : int(1..max_category).
+     forAll j : int(1..n_weeks).
+       not_all_same_type[i,j]= sum k : int(1..n_products-1).
+                               sum p : int(k+1..n_products). ((type_matrix_3d[i,j,k] != type_matrix_3d[i,j,p]) /\ (type_matrix_3d[i,j,k] !=0 /\ type_matrix_3d[i,j,p] != 0) ),  
+
+$-----------------------------------------------------------------------------
+$------------------------------same producer constraint--------------------------------
+    forAll i : int(1..max_category).
+     forAll l : int(1..n_weeks).
+      forAll j : int(1..n_products).
+       forAll k : int(j..n_products). ((type_matrix_3d[i,l,j] = type_matrix_3d[i,l,k]) /\ (type_matrix_3d[i,l,j] != 0) /\ same_type)  -> (product_producer[j] = product_producer[k]),
+
+$------------------------------------making sure product quantity adds up---------------------------------------
+
+    forAll k : int(1..n_products).
+     each_product[k] = sum i : int(1..max_category).
+                         sum j : int(1..n_weeks). solution[i,j,k] * 1,
+
+    forAll i : int(1..n_products) .
+     each_product[i] <= product_quantity[i],  
+$-------------------------------------------------checking quantity and price------------------------
+$---------------------------extra constraint for less_or_equal price-------------------------
+
+    forAll i : int(1..max_category).
+     forAll j : int(1..n_products). (product_category[j] = i) -> type_matrix[i,j] = product_type[j],
+
+
+   forAll i : int(1..max_category).
+     forAll j : int(1..n_products).(equal_or_less_price[i] = i /\ alldifferent_except(type_matrix[i,..], 0) /\ !same_type)  ->
+                                  ((category_indexes[i,j]/i)*each_product[j] = (category_indexes[i,j]/i)*product_quantity[j]),
+
+$---------------------------------------------------------------------------
+$-----------atleast one producer constraint (if any element of producer_matrix_check is 0,the solution wont be generated)-------------------------------
+    
+    forAll j : int(1..n_weeks).
+     forAll l : int(1..n_producers).
+      producer_matrix_check[j,l] = sum i : int(1..max_category).
+                                    sum k : int(1..n_products).
+                                     (product_producer[k] = l) * (solution[i,j,k] != 0) ,
+
+
+$---------------------------finding and comparing price------------------------------------
+    
+    forAll i : int(1..max_category).
+     forAll j : int(1..n_weeks).
+      price_of_each[i,j] = sum k : int(1..n_products).
+                            solution[i,j,k] * product_price[k],
+
+$--------------------------------------------switching between each week restricted(symmetry breaking)-------------------------------------------------
+
+    forAll i : int(1..max_category).
+     forAll j : int(1..n_weeks-1).
+      forAll k : int(j+1..n_weeks).
+      solution[i,j,..] <=lex solution[i,k,..],
+
+$-----------------------------------------------------------------------------------------------
+$--------------------------------optimisation-------------------------------------------------------------
+$----------------------------------1st way----------------------------------------
+
+    forAll i : int(1..max_category).
+      minimal[i] = sum j : int(1..n_weeks) . |basket_price[i] - price_of_each[i,j]| ,
+
+    optimal = sum i : int(1..max_category). minimal[i] * 1,
+
+$==================================================end==========================================================================================
+$------------------------------------------------2nd way---------------------------------------------------
+
+$    forAll i : int(1..max_category).
+$     forAll j : int(1..n_weeks).
+$     minimal[i,j] = |basket_price[i] - price_of_each[i,j]| ,
+
+$   forAll i : int(1..n_weeks).
+$    minimal_sum[i] = sum j : int(1..max_category).  minimal[j,i] * 1,
+
+$    small = min(minimal_sum),
+
+$   forAll i : int(1..n_weeks).
+$    minimal_sum[i] <= small,
+
+   
+$   optimal = sum k : int(1..n_weeks). minimal_sum[k] * 1,
+$-----------------------------------------------------------------------------------------------
+true
