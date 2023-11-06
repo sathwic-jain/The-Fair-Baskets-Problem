@@ -8,6 +8,7 @@ The Fair Baskets Problem is a complex optimization challenge, and this repositor
 ## Repository Contents
 - `fbp.eprime`: The E-Prime code file that implements the Fair Baskets Problem Solver.
 - `report.pdf`: A detailed report presenting the program's structure, constraints, variable definitions, and an empirical evaluation of its performance.
+- `Second model`: A folder that contains a second separate model and a report for it.
 
 ## Program Structure
 The `fair_baskets_solver.eprime` file contains the E-Prime code structured to solve the Fair Baskets Problem. It defines variables, domains, constraints, and an optimization function to create fair baskets according to the specified limitations.
