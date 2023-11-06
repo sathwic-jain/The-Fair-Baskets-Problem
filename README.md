@@ -1,15 +1,13 @@
 # The-Fair-Baskets-Problem
 
-# Fair Baskets Problem Solver
-
 ## Overview
 Welcome to the Fair Baskets Problem Solver repository! This project offers an efficient solution for the Fair Baskets Problem. The problem involves arranging products into baskets while adhering to various constraints related to categories, quantities, prices, and producer limitations.
 
 The Fair Baskets Problem is a complex optimization challenge, and this repository houses an implementation that aims to efficiently generate fair baskets while respecting the provided constraints.
 
 ## Repository Contents
-- `fair_baskets_solver.eprime`: The E-Prime code file that implements the Fair Baskets Problem Solver.
-- `report.md`: A detailed report presenting the program's structure, constraints, variable definitions, and an empirical evaluation of its performance.
+- `fbp.eprime`: The E-Prime code file that implements the Fair Baskets Problem Solver.
+- `report.pdf`: A detailed report presenting the program's structure, constraints, variable definitions, and an empirical evaluation of its performance.
 
 ## Program Structure
 The `fair_baskets_solver.eprime` file contains the E-Prime code structured to solve the Fair Baskets Problem. It defines variables, domains, constraints, and an optimization function to create fair baskets according to the specified limitations.
